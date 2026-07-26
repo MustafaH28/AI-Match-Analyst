@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Match Analyst</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="loadingOverlay" class="loading-overlay hidden" role="status" aria-live="polite" aria-busy="true">
+    <div class="loading-card">
+      <div class="loading-visual" aria-hidden="true">
+        <div class="loading-ball">⚽</div>
+        <div class="loading-pulse"></div>
+      </div>
+      <p class="eyebrow">AI Match Engine</p>
+      <h2>Generating your match report</h2>
+      <p id="loadingMessage">Validating match information...</p>
+      <div class="loading-track" aria-hidden="true"><span id="loadingProgress"></span></div>
+      <div class="loading-stage-row"><span id="loadingStage">Stage 1 of 5</span><span id="loadingPercent">10%</span></div>
+    </div>
+  </div>
+
+  <main class="container">
+    <section class="hero">
+      <p class="badge">Football Intelligence Platform</p>
+      <h1>⚽ AI Match Analyst</h1>
+      <p class="subtitle">Generate match reports, tactical insights, position-aware player ratings and football intelligence.</p>
+    </section>
+
+    <form id="matchForm" class="card">
+      <h2>Match Details</h2>
+      <div class="form-grid">
+        <label>Home Team<input type="text" id="homeTeam" placeholder="e.g. Arsenal" required /></label>
+        <label>Away Team<input type="text" id="awayTeam" placeholder="e.g. Chelsea" required /></label>
+      </div>
+      <div class="squad-load-buttons">
+        <button type="button" id="loadHomeSquadButton" class="secondary-action-button">Load Home Squad</button>
+        <button type="button" id="loadAwaySquadButton" class="secondary-action-button">Load Away Squad</button>
+      </div>
+      <div id="squadStatus" class="status-message hidden"></div>
+
+      <section id="squadSelectionSection" class="squad-selection-section hidden">
+        <h2>Select Players Who Played</h2>
+        <p class="section-description">Select the starting players and substitutes who appeared in the match.</p>
+        <div class="squad-columns">
+          <div class="squad-panel"><div id="homeSquadHeader" class="squad-panel-header">Home squad</div><div id="homeSquadList" class="squad-list">Load the home squad to see players.</div></div>
+          <div class="squad-panel"><div id="awaySquadHeader" class="squad-panel-header">Away squad</div><div id="awaySquadList" class="squad-list">Load the away squad to see players.</div></div>
+        </div>
+      </section>
+
+      <section id="selectedPlayersSection" class="selected-players-section hidden">
+        <div class="selected-players-heading">
+          <div>
+            <h2>Position-Specific Player Statistics</h2>
+            <p class="section-description">Each player receives statistics suited to their position. Clean sheets, saves, defensive actions, chance creation and shooting efficiency now affect ratings.</p>
+          </div>
+          <button type="button" id="clearSelectedPlayersButton" class="small-secondary-button">Clear Players</button>
+        </div>
+        <div class="rating-guide">Ratings begin at 6.0. Positive contributions raise the score, mistakes and missed chances can lower it, and players on the losing side receive a small result adjustment.</div>
+        <div id="selectedPlayersTable" class="selected-players-table"></div>
+      </section>
+
+      <label>Final Score<input type="text" id="finalScore" placeholder="e.g. Arsenal 3-0 Chelsea" required /></label>
+      <label>Goalscorers<input type="text" id="goalscorers" placeholder="e.g. Saka, Rice, Gabriel" /></label>
+      <label>Man of the Match<select id="manOfTheMatch"><option value="">Select a player</option></select></label>
+      <div class="form-grid">
+        <label>Possession<input type="text" id="possession" placeholder="e.g. Arsenal 58%, Chelsea 42%" /></label>
+        <label>Shots<input type="text" id="shots" placeholder="e.g. Arsenal 14, Chelsea 7" /></label>
+      </div>
+      <label>Key Moments<textarea id="keyMoments" placeholder="Describe the main events of the game..."></textarea></label>
+      <textarea id="playerPerformances" class="hidden" aria-hidden="true"></textarea>
+      <button type="submit" id="generateButton">Generate Report</button>
+    </form>
+
+    <section class="card output" id="reportSection">
+      <div class="section-title-row">
+        <div>
+          <p class="eyebrow">AI Analysis</p>
+          <h2>Match Dashboard</h2>
+        </div>
+        <div class="report-actions">
+          <span id="reportStatusBadge" class="report-status-badge hidden">AI Analysis Complete</span>
+          <button type="button" id="downloadPdfButton" class="download-pdf-button hidden">Save PDF</button>
+        </div>
+      </div>
+
+      <div id="matchHeader" class="match-header hidden"></div>
+
+      <div id="dashboardOutput" class="dashboard-output hidden">
+        <div class="overview-grid">
+          <article class="overview-card overview-card-winner" data-reveal-order="1"><span class="overview-icon" aria-hidden="true">🏆</span><span class="overview-label">Winner</span><strong id="dashboardWinner">-</strong><small id="dashboardResultType">Match result</small></article>
+          <article class="overview-card" data-reveal-order="2"><span class="overview-icon" aria-hidden="true">🎯</span><span class="overview-label">Confidence</span><strong id="dashboardConfidence">-</strong><div class="meter"><span id="confidenceMeter"></span></div></article>
+          <article class="overview-card" data-reveal-order="3"><span class="overview-icon" aria-hidden="true">📊</span><span class="overview-label">Match Rating</span><strong id="dashboardRating">-/10</strong><div class="meter"><span id="ratingMeter"></span></div></article>
+          <article id="motmOverviewCard" class="overview-card overview-card-motm" data-reveal-order="4"><span class="overview-icon" aria-hidden="true">⭐</span><span class="overview-label">Man of the Match</span><strong id="dashboardMotm">Not selected</strong><small>Top individual performer</small></article>
+        </div>
+
+        <div class="comparison-panel" data-reveal-order="5">
+          <div class="panel-heading"><div><p class="eyebrow">Team Comparison</p><h3>Match Statistics</h3></div></div>
+          <div class="comparison-team-headings"><strong id="comparisonHomeTeam">Home</strong><span>Statistic</span><strong id="comparisonAwayTeam">Away</strong></div>
+          <div id="comparisonRows" class="comparison-rows"></div>
+        </div>
+
+        <div class="report-layout">
+          <div class="report-main-column">
+            <article class="dashboard-panel" data-reveal-order="6"><div class="panel-heading"><div><p class="eyebrow">Overview</p><h3>Match Summary</h3></div></div><p id="dashboardSummary" class="report-copy"></p></article>
+            <article class="dashboard-panel" data-reveal-order="7"><div class="panel-heading"><div><p class="eyebrow">Tactical Reading</p><h3>Tactical Analysis</h3></div></div><div id="dashboardTactical" class="report-copy"></div></article>
+            <article class="dashboard-panel" data-reveal-order="8"><div class="panel-heading"><div><p class="eyebrow">Decisive Events</p><h3>Key Turning Points</h3></div></div><ul id="dashboardKeyMoments" class="turning-points-list"></ul></article>
+          </div>
+          <aside class="report-side-column">
+            <article class="dashboard-panel compact-panel" data-reveal-order="9"><div class="panel-heading"><div><p class="eyebrow">Match Intelligence</p><h3>Key Indicators</h3></div></div><div id="dashboardIndicators" class="indicator-grid"></div></article>
+            <article class="dashboard-panel compact-panel" data-reveal-order="10"><div class="panel-heading"><div><p class="eyebrow">Final Word</p><h3>AI Verdict</h3></div></div><p id="dashboardVerdict" class="report-copy"></p></article>
+          </aside>
+        </div>
+
+        <article class="dashboard-panel player-performance-panel" data-reveal-order="11">
+          <div class="panel-heading player-panel-heading"><div><p class="eyebrow">Individual Analysis</p><h3>Player Performances</h3></div><span id="playerCountBadge" class="player-count-badge">0 players</span></div>
+          <div id="dashboardPlayerRatings" class="premium-player-grid"></div>
+        </article>
+
+        <article class="dashboard-panel ratings-chart-panel" data-reveal-order="12">
+          <div class="panel-heading"><div><p class="eyebrow">Visual Comparison</p><h3>Player Ratings Chart</h3></div></div>
+          <div class="chart-container"><canvas id="playerRatingsChart" aria-label="Player ratings bar chart"></canvas><p id="chartFallback" class="chart-fallback hidden">The ratings chart could not be loaded, but the player cards above still contain every rating.</p></div>
+        </article>
+      </div>
+
+      <div id="reportOutput" class="legacy-report-output">Your match report will appear here.</div>
+    </section>
+
+    <section class="card">
+      <div class="section-title-row"><div><p class="eyebrow">Saved Analysis</p><h2>Match History</h2></div></div>
+      <div id="historyOutput">No reports generated yet.</div>
+    </section>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

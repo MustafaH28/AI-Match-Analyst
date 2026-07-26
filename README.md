@@ -17,6 +17,34 @@ The project combines a FastAPI + SQLite backend with a responsive HTML, CSS, and
 
 Important: the current analysis engine is deterministic and rule-based rather than an external LLM or machine-learning model. The "AI Match Analyst" branding refers to the intelligent analytical experience and structured decision logic implemented by the application.
 
+## Screenshots
+
+### Match Dashboard
+
+The generated dashboard presents the final score, winner, confidence, match rating, Man of the Match, team comparison, tactical analysis and match intelligence in one interface.
+
+![AI Match Analyst dashboard](screenshots/dashboard.png)
+
+### Position-Aware Player Ratings
+
+Player performances are evaluated using statistics relevant to each position, with individual summaries, visual rating bars and Man of the Match highlighting.
+
+![AI Match Analyst player ratings](screenshots/player-ratings.png)
+
+### Analysis Loading Experience
+
+A staged loading interface provides visual feedback while the backend calculates player ratings, tactical insights and the final report.
+
+![AI Match Analyst loading screen](screenshots/loading.png)
+
+### PDF Export
+
+Completed reports can be formatted for A4 and exported using the browser's native PDF/print system.
+
+![AI Match Analyst PDF preview](screenshots/pdf-preview.png)
+
+---
+
 Key Features
 
 Match analysis

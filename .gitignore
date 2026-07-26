@@ -216,3 +216,31 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+
+# -----------------------------------
+# AI Match Analyst - Project Specific
+# -----------------------------------
+
+# Environment variables / secrets
+.env
+backend/.env
+
+# SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Generated PDF reports
+*.pdf
+
+# IDE settings
+.vscode/
+.idea/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

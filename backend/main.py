@@ -69,9 +69,19 @@ app.add_middleware(
 # DATABASE SETUP
 # --------------------------------------------------
 
-DATABASE_PATH = (
-    Path(__file__).parent
-    / "match_history.db"
+DATABASE_PATH = Path(
+    os.getenv(
+        "DATABASE_PATH",
+        str(
+            Path(__file__).parent
+            / "match_history.db"
+        ),
+    )
+)
+
+DATABASE_PATH.parent.mkdir(
+    parents=True,
+    exist_ok=True,
 )
 
 
@@ -699,6 +709,24 @@ def analyse_match(match: MatchData):
         rating = 4
 
     if winner is None:
+        confidence = "Evenly Matched"
+
+    elif (
+        goal_difference >= 3
+        or shot_difference >= 8
+    ):
+        confidence = "High"
+
+    elif (
+        goal_difference == 1
+        and shot_difference <= 3
+    ):
+        confidence = "Low"
+
+    else:
+        confidence = "Medium"
+
+    if winner is None:
         confidence_percent = 50
     else:
         confidence_percent = 52
@@ -708,11 +736,6 @@ def analyse_match(match: MatchData):
         confidence_percent = round(
             max(35, min(confidence_percent, 96))
         )
-
-    confidence = get_confidence_label(
-        confidence_percent=confidence_percent,
-        is_draw=winner is None,
-    )
 
     return {
         "winner": winner,
@@ -855,35 +878,6 @@ def clamp_rating(rating: float):
         max(1.0, min(rating, 10.0)),
         1,
     )
-
-
-def get_confidence_label(confidence_percent: int, is_draw: bool):
-    if is_draw:
-        if confidence_percent <= 52:
-            return "Too Close To Call"
-        return "Evenly Matched"
-
-    if confidence_percent >= 90:
-        return "Extremely Confident"
-
-    if confidence_percent >= 80:
-        return "High Confidence"
-
-    if confidence_percent >= 70:
-        return "Strong Prediction"
-
-    if confidence_percent >= 60:
-        return "Moderate Confidence"
-
-    return "Too Close To Call"
-
-
-def choose_summary_template(player_name: str, templates: list[str]):
-    if not templates:
-        return ""
-
-    seed = sum(ord(character) for character in player_name.casefold())
-    return templates[seed % len(templates)]
 
 
 def get_int_stat(stats: dict, key: str):
@@ -1169,7 +1163,6 @@ def apply_result_adjustment(
 
 
 def create_player_performance_summary(
-    player_name: str,
     position: str,
     rating: float,
     stats: dict,
@@ -1178,51 +1171,19 @@ def create_player_performance_summary(
     goals = get_int_stat(stats, "goals")
     assists = get_int_stat(stats, "assists")
 
-    if is_man_of_the_match:
-        opening = choose_summary_template(
-            player_name,
-            [
-                "A match-defining display that set the standard",
-                "The standout individual performance of the match",
-                "A decisive contribution worthy of the top honour",
-            ],
+    opening = (
+        "A match-defining individual display"
+        if is_man_of_the_match
+        else (
+            "An outstanding performance"
+            if rating >= 8.5
+            else "A strong and effective performance"
+            if rating >= 7.2
+            else "A steady contribution"
+            if rating >= 6.0
+            else "A difficult performance"
         )
-    elif rating >= 8.5:
-        opening = choose_summary_template(
-            player_name,
-            [
-                "An outstanding all-round performance",
-                "A commanding display from start to finish",
-                "A high-impact performance in the key phases",
-            ],
-        )
-    elif rating >= 7.2:
-        opening = choose_summary_template(
-            player_name,
-            [
-                "A strong and effective performance",
-                "A consistently positive contribution",
-                "A reliable display with several important actions",
-            ],
-        )
-    elif rating >= 6.0:
-        opening = choose_summary_template(
-            player_name,
-            [
-                "A steady contribution across the match",
-                "A composed performance with useful involvement",
-                "A solid display without dominating the contest",
-            ],
-        )
-    else:
-        opening = choose_summary_template(
-            player_name,
-            [
-                "A difficult performance with limited influence",
-                "A below-par display in a demanding match",
-                "A challenging outing with room for improvement",
-            ],
-        )
+    )
 
     if position == "Goalkeeper":
         saves = get_int_stat(stats, "saves")
@@ -1230,29 +1191,16 @@ def create_player_performance_summary(
         penalties = get_int_stat(stats, "penaltySaves")
         clean_sheet = get_bool_stat(stats, "cleanSheet")
         details = []
-
         if clean_sheet:
             details.append("preserved a clean sheet")
         if saves:
             details.append(f"made {saves} save{'s' if saves != 1 else ''}")
         if penalties:
-            details.append(
-                f"stopped {penalties} "
-                f"penalt{'ies' if penalties != 1 else 'y'}"
-            )
+            details.append(f"stopped {penalties} penalty{'ies' if penalties != 1 else ''}")
         if conceded and not clean_sheet:
             details.append(f"conceded {conceded}")
-
-        ending = (
-            ", ".join(details)
-            or "provided a composed presence behind the defence"
-        )
-
-        return (
-            f"{opening}. The goalkeeper {ending}. "
-            "The rating reflects shot-stopping, composure and command "
-            "of the penalty area."
-        )
+        ending = ", ".join(details) or "provided a composed presence behind the defence"
+        return f"{opening}. The goalkeeper {ending}, with the rating reflecting shot-stopping impact and overall control."
 
     if position == "Defence":
         tackles = get_int_stat(stats, "tackles")
@@ -1261,50 +1209,25 @@ def create_player_performance_summary(
         errors = get_int_stat(stats, "defensiveErrors")
         clean_sheet = get_bool_stat(stats, "cleanSheet")
         actions = tackles + interceptions + clearances
-        details = []
-
-        if actions:
-            details.append(f"completed {actions} defensive actions")
-        else:
-            details.append("showed positional discipline")
-        if goals:
-            details.append(f"scored {goals} goal{'s' if goals != 1 else ''}")
-        if assists:
-            details.append(
-                f"provided {assists} assist{'s' if assists != 1 else ''}"
-            )
+        extras = []
+        if goals or assists:
+            extras.append(f"added {goals} goal{'s' if goals != 1 else ''} and {assists} assist{'s' if assists != 1 else ''}")
         if clean_sheet:
-            details.append("helped secure a clean sheet")
+            extras.append("helped secure a clean sheet")
         if errors:
-            details.append(
-                f"was affected by {errors} defensive "
-                f"error{'s' if errors != 1 else ''}"
-            )
-
-        return f"{opening}. The defender " + ", ".join(details) + "."
+            extras.append(f"was affected by {errors} defensive error{'s' if errors != 1 else ''}")
+        action_text = f"completed {actions} recorded defensive actions" if actions else "showed positional discipline"
+        return f"{opening}. The defender {action_text}{'; ' + ', '.join(extras) if extras else ''}."
 
     if position == "Midfield":
         key_passes = get_int_stat(stats, "keyPasses")
         chances = get_int_stat(stats, "chancesCreated")
         tackles = get_int_stat(stats, "tackles")
-        creative_actions = key_passes + chances
-
-        if creative_actions >= 6:
-            influence = "dictated several attacking phases"
-        elif goals or assists:
-            influence = "made a direct contribution in the final third"
-        elif tackles >= 4:
-            influence = "added valuable defensive work in midfield"
-        else:
-            influence = "kept the midfield functioning with measured involvement"
-
         return (
-            f"{opening}. The midfielder recorded {goals} "
-            f"goal{'s' if goals != 1 else ''}, {assists} "
-            f"assist{'s' if assists != 1 else ''}, {key_passes} key "
-            f"pass{'es' if key_passes != 1 else ''}, {chances} chance"
-            f"{'s' if chances != 1 else ''} created and {tackles} "
-            f"tackle{'s' if tackles != 1 else ''}. They {influence}."
+            f"{opening}. The midfielder contributed {goals} goal{'s' if goals != 1 else ''}, "
+            f"{assists} assist{'s' if assists != 1 else ''}, {key_passes} key pass{'es' if key_passes != 1 else ''}, "
+            f"{chances} chance{'s' if chances != 1 else ''} created and {tackles} tackle{'s' if tackles != 1 else ''}, "
+            "showing the balance of creativity and work without the ball."
         )
 
     if position == "Offence":
@@ -1312,30 +1235,14 @@ def create_player_performance_summary(
         on_target = get_int_stat(stats, "shotsOnTarget")
         missed = get_int_stat(stats, "bigChancesMissed")
         efficiency = (on_target / shots * 100) if shots else 0
-
-        if goals >= 2:
-            impact = "delivered a decisive scoring performance"
-        elif goals or assists:
-            impact = "made a clear contribution to the attacking output"
-        elif on_target >= 3:
-            impact = "remained a regular threat despite not scoring"
-        else:
-            impact = "found it difficult to consistently trouble the defence"
-
         return (
-            f"{opening}. The attacker produced {goals} "
-            f"goal{'s' if goals != 1 else ''}, {assists} "
-            f"assist{'s' if assists != 1 else ''} and {on_target} shot"
-            f"{'s' if on_target != 1 else ''} on target from {shots} "
-            f"attempt{'s' if shots != 1 else ''} "
-            f"({efficiency:.0f}% accuracy), with {missed} big chance"
-            f"{'s' if missed != 1 else ''} missed. They {impact}."
+            f"{opening}. The attacker recorded {goals} goal{'s' if goals != 1 else ''}, "
+            f"{assists} assist{'s' if assists != 1 else ''} and {on_target} shot{'s' if on_target != 1 else ''} on target "
+            f"from {shots} attempt{'s' if shots != 1 else ''} ({efficiency:.0f}% accuracy), "
+            f"with {missed} big chance{'s' if missed != 1 else ''} missed."
         )
 
-    return (
-        f"{opening}. The submitted statistics produced a "
-        f"{rating:.1f}/10 position-aware rating."
-    )
+    return f"{opening}. The submitted statistics produced a {rating:.1f}/10 position-aware rating."
 
 
 def calculate_player_ratings(
@@ -1420,7 +1327,6 @@ def calculate_player_ratings(
 
     for player in player_ratings:
         player["summary"] = create_player_performance_summary(
-            player_name=player["name"],
             position=player["position"],
             rating=player["rating"],
             stats=player["stats"],

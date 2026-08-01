@@ -1,5 +1,5 @@
 const API_BASE_URL =
-  "http://127.0.0.1:8000";
+  "https://ai-match-analyst-production.up.railway.app";
 
 const reportOutput =
   document.getElementById("reportOutput");
@@ -35,7 +35,6 @@ const downloadPdfButton = document.getElementById("downloadPdfButton");
 
 let playerRatingsChart = null;
 let loadingTimers = [];
-let loadingStartedAt = 0;
 
 const historyOutput =
   document.getElementById("historyOutput");
@@ -917,20 +916,15 @@ function updateLoadingStage(percent, stage, message) {
 
 function showLoadingOverlay() {
   clearLoadingTimers();
-  loadingStartedAt = Date.now();
-
   if (!loadingOverlay) return;
-
   loadingOverlay.classList.remove("hidden");
-  loadingOverlay.classList.remove("is-closing");
   document.body.classList.add("is-loading");
-  updateLoadingStage(8, "Stage 1 of 5", "Validating match information...");
+  updateLoadingStage(10, "Stage 1 of 4", "Validating match information...");
 
   [
-    [420, 28, "Stage 2 of 5", "Reading team statistics and the final score..."],
-    [980, 49, "Stage 3 of 5", "Calculating position-aware player ratings..."],
-    [1580, 70, "Stage 4 of 5", "Building tactical analysis and match intelligence..."],
-    [2200, 88, "Stage 5 of 5", "Preparing the dashboard, badges and visualisations..."]
+    [450, 32, "Stage 2 of 4", "Calculating position-aware player ratings..."],
+    [1050, 58, "Stage 3 of 4", "Building tactical analysis and match intelligence..."],
+    [1750, 82, "Stage 4 of 4", "Preparing the final dashboard and visualisations..."]
   ].forEach(function (stage) {
     loadingTimers.push(window.setTimeout(function () {
       updateLoadingStage(stage[1], stage[2], stage[3]);
@@ -942,21 +936,12 @@ function showLoadingOverlay() {
 function hideLoadingOverlay() {
   clearLoadingTimers();
   if (!loadingOverlay) return;
-
-  const elapsed = Date.now() - loadingStartedAt;
-  const remainingDelay = Math.max(0, 900 - elapsed);
-
+  updateLoadingStage(100, "Complete", "Report ready.");
   window.setTimeout(function () {
-    updateLoadingStage(100, "Analysis complete", "Your AI match dashboard is ready.");
-    loadingOverlay.classList.add("is-closing");
-
-    window.setTimeout(function () {
-      loadingOverlay.classList.add("hidden");
-      loadingOverlay.classList.remove("is-closing");
-      document.body.classList.remove("is-loading");
-      updateLoadingStage(8, "Stage 1 of 5", "Validating match information...");
-    }, 340);
-  }, remainingDelay);
+    loadingOverlay.classList.add("hidden");
+    document.body.classList.remove("is-loading");
+    updateLoadingStage(10, "Stage 1 of 4", "Validating match information...");
+  }, 260);
 }
 
 
@@ -1305,7 +1290,6 @@ function renderPremiumDashboard(data, matchData) {
 
   reportOutput.classList.add("hidden");
   dashboardOutput.classList.remove("hidden");
-  reportStatusBadge.textContent = "AI Analysis Complete";
   reportStatusBadge.classList.remove("hidden");
 
   dashboardWinner.textContent = winner;
@@ -1314,12 +1298,7 @@ function renderPremiumDashboard(data, matchData) {
   animateMeter(confidenceMeter, confidencePercent);
   dashboardRating.textContent = `${rating.toFixed(1)}/10`;
   animateMeter(ratingMeter, Math.max(0, Math.min(100, rating * 10)));
-  const motmName = matchData.manOfTheMatch || findMotm(data.playerRatings) || "Not selected";
-  dashboardMotm.textContent = motmName;
-  document.getElementById("motmOverviewCard")?.classList.toggle(
-    "has-motm",
-    motmName !== "Not selected"
-  );
+  dashboardMotm.textContent = matchData.manOfTheMatch || findMotm(data.playerRatings) || "Not selected";
 
   comparisonHomeTeam.textContent = matchData.homeTeam || "Home";
   comparisonAwayTeam.textContent = matchData.awayTeam || "Away";
@@ -1328,7 +1307,6 @@ function renderPremiumDashboard(data, matchData) {
     createComparisonRow("Possession", possessionData.home, possessionData.away, possessionData.home, possessionData.away, "%"),
     createComparisonRow("Shots", shotsData.home, shotsData.away, shotsData.home, shotsData.away)
   ].join("");
-  animateComparisonBars();
 
   dashboardSummary.innerHTML = reportSections["Match Summary"] ||
     `${escapeHtml(matchData.homeTeam)} faced ${escapeHtml(matchData.awayTeam)} in a match that finished ${escapeHtml(matchData.finalScore)}.`;
@@ -1419,12 +1397,10 @@ function extractConfidence(reportHtml) {
 
 function confidenceToPercent(confidence) {
   const clean = String(confidence || "").toLowerCase();
-  if (clean.includes("extremely")) return 94;
-  if (clean.includes("high")) return 84;
-  if (clean.includes("strong")) return 74;
-  if (clean.includes("moderate")) return 64;
-  if (clean.includes("even") || clean.includes("close")) return 50;
-  return 60;
+  if (clean.includes("high")) return 88;
+  if (clean.includes("low")) return 38;
+  if (clean.includes("even")) return 50;
+  return 65;
 }
 
 function parseScore(finalScore, homeTeam, awayTeam) {
@@ -1453,33 +1429,14 @@ function createComparisonRow(label, homeDisplay, awayDisplay, homeValue, awayVal
       <div class="comparison-centre">
         <span>${escapeHtml(label)}</span>
         <div class="dual-bar">
-          <i class="home-bar" data-bar-width="${homeWidth}"></i>
-          <i class="away-bar" data-bar-width="${awayWidth}"></i>
+          <i class="home-bar" style="width:${homeWidth}%"></i>
+          <i class="away-bar" style="width:${awayWidth}%"></i>
         </div>
       </div>
       <strong>${escapeHtml(awayDisplay)}${suffix}</strong>
     </div>
   `;
 }
-
-function animateComparisonBars() {
-  if (!comparisonRows) return;
-
-  const bars = comparisonRows.querySelectorAll("[data-bar-width]");
-
-  bars.forEach(function (bar) {
-    bar.style.width = "0%";
-  });
-
-  requestAnimationFrame(function () {
-    bars.forEach(function (bar, index) {
-      window.setTimeout(function () {
-        bar.style.width = `${bar.dataset.barWidth}%`;
-      }, index * 70);
-    });
-  });
-}
-
 
 function splitKeyMoments(value) {
   return String(value || "")
@@ -1563,15 +1520,8 @@ function animateMeter(element, percentage) {
 
 function revealDashboard() {
   if (!dashboardOutput) return;
-
   dashboardOutput.classList.remove("is-visible");
-  dashboardOutput.querySelectorAll("[data-reveal-order]").forEach(function (item) {
-    const order = Number(item.dataset.revealOrder) || 1;
-    item.style.setProperty("--reveal-delay", `${Math.min((order - 1) * 65, 650)}ms`);
-  });
-
   void dashboardOutput.offsetWidth;
-
   requestAnimationFrame(function () {
     dashboardOutput.classList.add("is-visible");
   });
@@ -1655,98 +1605,35 @@ function createPdfFilename() {
 }
 
 
-function waitForPdfImage(image) {
-  if (image.complete) {
-    return Promise.resolve();
-  }
-
-  return new Promise(function (resolve) {
-    let finished = false;
-
-    function finish() {
-      if (finished) return;
-      finished = true;
-      resolve();
-    }
-
-    image.addEventListener("load", finish, { once: true });
-    image.addEventListener("error", finish, { once: true });
-    window.setTimeout(finish, 2500);
-  });
-}
-
-
-async function waitForPdfAssets(root) {
-  if (document.fonts && document.fonts.ready) {
-    try {
-      await document.fonts.ready;
-    } catch (error) {
-      console.warn("Font readiness check failed before PDF export:", error);
-    }
-  }
-
-  const images = Array.from(root.querySelectorAll("img"));
-  await Promise.all(images.map(waitForPdfImage));
-
-  if (playerRatingsChart) {
-    try {
-      playerRatingsChart.stop();
-      playerRatingsChart.update("none");
-      playerRatingsChart.resize();
-    } catch (error) {
-      console.warn("Could not prepare the ratings chart for PDF export:", error);
-    }
-  }
-
-  await new Promise(function (resolve) {
-    requestAnimationFrame(function () {
-      requestAnimationFrame(resolve);
-    });
-  });
-}
-
-
 async function downloadMatchReport() {
-  if (!dashboardOutput || dashboardOutput.classList.contains("hidden")) {
-    window.alert("Generate a match report before exporting a PDF.");
+  if (typeof html2pdf === "undefined") {
+    window.print();
     return;
   }
 
   const originalText = downloadPdfButton.textContent;
-  const originalTitle = document.title;
-
   downloadPdfButton.disabled = true;
   downloadPdfButton.textContent = "Preparing PDF...";
+  document.body.classList.add("pdf-export-mode");
 
   try {
-    await waitForPdfAssets(reportSection);
-
-    document.body.classList.add("pdf-export-mode");
-    document.title = createPdfFilename().replace(/\.pdf$/i, "");
-
-    await new Promise(function (resolve) {
-      requestAnimationFrame(function () {
-        requestAnimationFrame(resolve);
-      });
-    });
-
-    /*
-      Browser-native printing is intentionally used here instead of
-      html2pdf/html2canvas. The dashboard contains external team badges,
-      a Chart.js canvas, CSS grids, gradients and a long report. Chromium's
-      print renderer handles those reliably and keeps text sharp, while
-      canvas-based PDF libraries can fail or produce incomplete pages.
-
-      In the print window choose "Save to PDF" as the destination.
-    */
-    window.print();
+    await html2pdf().set({
+      margin: [8, 8, 8, 8],
+      filename: createPdfFilename(),
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#081120",
+        scrollY: 0
+      },
+      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      pagebreak: { mode: ["avoid-all", "css", "legacy"] }
+    }).from(reportSection).save();
   } catch (error) {
-    console.error("Could not prepare PDF export:", error);
-    window.alert(
-      "The PDF export could not be prepared. Refresh the page, generate the report again, and retry."
-    );
+    console.error("Could not export PDF:", error);
+    window.alert("The PDF could not be created. Try again after the report has fully loaded.");
   } finally {
-    document.title = originalTitle;
     document.body.classList.remove("pdf-export-mode");
     downloadPdfButton.disabled = false;
     downloadPdfButton.textContent = originalText;

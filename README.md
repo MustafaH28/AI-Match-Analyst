@@ -29,8 +29,13 @@ The generated dashboard presents the final score, winner, confidence, match rati
 
 Player performances are evaluated using statistics relevant to each position, with individual summaries, visual rating bars and Man of the Match highlighting.
 
-![AI Match Analyst player ratings](screenshots/player-ratings.png)
+![Player Ratings 1](screenshots/player-ratings-1.png)
 
+![Player Ratings 2](screenshots/player-ratings-2.png)
+
+![Player Ratings 3](screenshots/player-ratings-3.png)
+
+![Player Ratings 4](screenshots/player-ratings-4.png)
 ### Analysis Loading Experience
 
 A staged loading interface provides visual feedback while the backend calculates player ratings, tactical insights and the final report.

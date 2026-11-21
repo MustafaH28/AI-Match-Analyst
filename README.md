@@ -1,3 +1,4 @@
+![Tests](https://github.com/MustafaH28/AI-Match-Analyst/actions/workflows/tests.yml/badge.svg)
 ⚽ AI Match Analyst
 
 Full-stack football analytics and post-match intelligence platform
